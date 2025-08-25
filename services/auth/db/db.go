@@ -10,25 +10,28 @@ import (
 
 var Pool *pgxpool.Pool
 
-func InitBD(dsn string) error {
+func InitDB(dsn string) error {
 	var err error
 	config, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		return nil
-	}
-
-	config.MaxConns = 20
-	config.HealthCheckPeriod = 30 * time.Second
-
-	Pool, err = pgxpool.NewWithConfig(context.Background(), config)
-	if err != nil {
 		return err
 	}
 
-	if err = Pool.Ping(context.Background()); err != nil {
-		return err
+	// Повторяем попытки подключения
+	maxRetries := 10
+	for i := 0; i < maxRetries; i++ {
+		Pool, err = pgxpool.NewWithConfig(context.Background(), config)
+		if err == nil {
+			// Проверяем подключение
+			if err = Pool.Ping(context.Background()); err == nil {
+				fmt.Println("✅ PostgreSQL connected")
+				return nil
+			}
+		}
+
+		fmt.Printf("❌ PostgreSQL not ready, retrying %d/%d: %v\n", i+1, maxRetries, err)
+		time.Sleep(2 * time.Second)
 	}
 
-	fmt.Println("PostgreSQL connected")
-	return nil
+	return fmt.Errorf("failed to connect to PostgreSQL after %d retries", maxRetries)
 }

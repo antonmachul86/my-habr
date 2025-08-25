@@ -95,7 +95,7 @@ func (s *AuthService) Refresh(refreshToken string) (string, string, error) {
 	return s.GenerateTokens(userID)
 }
 
-func (s *AuthService) Logiut(refreshToken string) error {
+func (s *AuthService) Logout(refreshToken string) error {
 	ctx := context.Background()
 	return s.redis.Del(ctx, refreshToken).Err()
 }
