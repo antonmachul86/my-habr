@@ -8,6 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 	"my-habr/services/auth/model"
 	"my-habr/services/auth/repository"
 	"strconv"
@@ -65,20 +66,32 @@ func (s *AuthService) Register(email, password string) error {
 		return err
 	}
 
-	user := &model.User{EMail: email, Password: hashed}
+	user := &model.User{Email: email, Password: hashed}
 	return s.userRepo.CreateUser(context.Background(), user)
 
 }
 func (s *AuthService) Login(email, password string) (string, string, error) {
+	log.Printf("🔍 Login attempt for email: %s", email)
+
 	user, err := s.userRepo.FindByEmail(context.Background(), email)
-	if err != nil || user == nil {
-		return "", "", fmt.Errorf("invalid credential")
+	if err != nil {
+		log.Printf("❌ DB error in FindByEmail: %v", err)
+		return "", "", fmt.Errorf("database error")
 	}
+
+	if user == nil {
+		log.Printf("❌ User not found: %s", email)
+		return "", "", fmt.Errorf("invalid credentials")
+	}
+
+	log.Printf("✅ User found: ID=%d", user.ID)
 
 	if !s.CheckPassword(user.Password, password) {
-		return "", "", fmt.Errorf("invalid credential")
+		log.Printf("❌ Invalid password for user: %s", email)
+		return "", "", fmt.Errorf("invalid credentials")
 	}
 
+	log.Printf("✅ Password valid, generating tokens for user ID=%d", user.ID)
 	return s.GenerateTokens(user.ID)
 }
 

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
+	"log"
 	"my-habr/services/auth/service"
 	"net/http"
 )
@@ -16,16 +17,19 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req struct {
-		Email    string `json:"email" blinding:"required, email"`
-		Password string `json:"password" binding:"required, min=6"`
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required,min=6"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
+	// Добавь логирование ошибки
 	if err := h.authService.Register(req.Email, req.Password); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not creater user"})
+		log.Printf("❌ Register failed: %v", err) // ← это покажет реальную причину
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not create user"})
 		return
 	}
 
@@ -34,12 +38,13 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req struct {
-		Email    string `json:"email" blinding:"required, email"`
-		Password string `json:"password" binding:"required, min=6"`
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required,min=6"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	accessToken, refreshToken, err := h.authService.Login(req.Email, req.Password)
